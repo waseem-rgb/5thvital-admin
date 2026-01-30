@@ -6,7 +6,8 @@ interface DashboardStats {
   totalLeads: number
   newLeads: number
   totalPages: number
-  publishedPages: number
+  totalPackages: number
+  publishedPackages: number
   totalMedia: number
 }
 
@@ -28,10 +29,15 @@ async function getDashboardStats(): Promise<DashboardStats> {
     .from('pages')
     .select('*', { count: 'exact', head: true })
 
-  const { count: publishedPages } = await supabase
-    .from('pages')
+  // Get packages count
+  const { count: totalPackages } = await supabase
+    .from('packages')
     .select('*', { count: 'exact', head: true })
-    .eq('published', true)
+
+  const { count: publishedPackages } = await supabase
+    .from('packages')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'published')
 
   // Get media count
   const { count: totalMedia } = await supabase
@@ -42,7 +48,8 @@ async function getDashboardStats(): Promise<DashboardStats> {
     totalLeads: totalLeads || 0,
     newLeads: newLeads || 0,
     totalPages: totalPages || 0,
-    publishedPages: publishedPages || 0,
+    totalPackages: totalPackages || 0,
+    publishedPackages: publishedPackages || 0,
     totalMedia: totalMedia || 0,
   }
 }
@@ -67,7 +74,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <StatCard
             title="Total Leads"
             value={stats.totalLeads}
@@ -90,14 +97,24 @@ export default async function DashboardPage() {
           />
           <StatCard
             title="Pages"
-            value={`${stats.publishedPages}/${stats.totalPages}`}
-            subtitle="Published"
+            value={stats.totalPages}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             }
             color="purple"
+          />
+          <StatCard
+            title="Packages"
+            value={`${stats.publishedPackages}/${stats.totalPackages}`}
+            subtitle="Published"
+            icon={
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            }
+            color="indigo"
           />
           <StatCard
             title="Media Files"
@@ -137,13 +154,14 @@ function StatCard({
   value: number | string
   subtitle?: string
   icon: React.ReactNode
-  color: 'blue' | 'green' | 'purple' | 'orange'
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'indigo'
 }) {
   const colorClasses = {
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
     purple: 'bg-purple-100 text-purple-600',
     orange: 'bg-orange-100 text-orange-600',
+    indigo: 'bg-indigo-100 text-indigo-600',
   }
 
   return (

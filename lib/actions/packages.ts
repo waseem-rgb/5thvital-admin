@@ -2,33 +2,21 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { 
-  PackageDetail, 
-  PackageCreateInput, 
+import {
+  PackageDetail,
+  PackageCreateInput,
   PackageUpdateInput,
   PackageStatus,
   PackageParameter,
   PackageFaq
 } from '@/lib/types'
+import { generateSlug } from '@/lib/utils'
 
 /**
  * Validate slug format: lowercase, letters/numbers/hyphens only.
  */
 function isValidSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)
-}
-
-/**
- * Generate a slug from a title string.
- */
-export function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-')      // Replace spaces with hyphens
-    .replace(/-+/g, '-')       // Collapse multiple hyphens
-    .replace(/^-|-$/g, '')     // Trim hyphens from start/end
 }
 
 /**

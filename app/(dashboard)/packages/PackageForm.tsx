@@ -4,12 +4,12 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PackageDetail, PackageStatus } from '@/lib/types'
-import { 
-  createPackageAction, 
-  updatePackageAction, 
-  deletePackage,
-  generateSlug 
+import {
+  createPackageAction,
+  updatePackageAction,
+  deletePackage
 } from '@/lib/actions/packages'
+import { generateSlug } from '@/lib/utils'
 
 interface PackageFormProps {
   package?: PackageDetail
