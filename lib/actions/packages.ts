@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkAdmin } from '@/lib/auth/requireAdmin'
 import { revalidatePath } from 'next/cache'
 import {
   PackageDetail,
@@ -36,6 +38,20 @@ function validateJsonArray(jsonString: string, fieldName: string): { valid: bool
   } catch {
     return { valid: false, error: `${fieldName} contains invalid JSON` }
   }
+}
+
+async function ensureAdmin(): Promise<{ ok: boolean; error?: string }> {
+  const result = await checkAdmin()
+
+  if (!result.isAuthenticated) {
+    return { ok: false, error: 'Not authenticated' }
+  }
+
+  if (!result.ok || !result.admin) {
+    return { ok: false, error: 'Not authorized' }
+  }
+
+  return { ok: true }
 }
 
 /**
@@ -77,6 +93,11 @@ export async function createPackage(
   input: PackageCreateInput
 ): Promise<{ data: PackageDetail | null; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { data: null, error: auth.error || 'Not authorized' }
+    }
+
     // Validate required fields
     if (!input.title || input.title.trim().length < 2) {
       return { data: null, error: 'Title is required and must be at least 2 characters' }
@@ -98,7 +119,7 @@ export async function createPackage(
       return { data: null, error: 'Slug must be at least 2 characters' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Check if slug already exists
     const { data: existing } = await supabase
@@ -160,6 +181,11 @@ export async function updatePackage(
   input: PackageUpdateInput
 ): Promise<{ data: PackageDetail | null; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { data: null, error: auth.error || 'Not authorized' }
+    }
+
     if (!id) {
       return { data: null, error: 'Package ID is required' }
     }
@@ -180,7 +206,7 @@ export async function updatePackage(
       }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // If slug is being changed, check for uniqueness
     if (input.slug !== undefined) {
@@ -245,11 +271,16 @@ export async function updatePackage(
  */
 export async function deletePackage(id: string): Promise<{ success: boolean; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { success: false, error: auth.error || 'Not authorized' }
+    }
+
     if (!id) {
       return { success: false, error: 'Package ID is required' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase
       .from('packages')

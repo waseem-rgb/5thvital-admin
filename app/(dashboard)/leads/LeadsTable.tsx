@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Lead } from '@/lib/types'
-import { createClient } from '@/lib/supabase/browser'
+import { updateLeadAction } from '@/lib/actions/leads'
 import { useRouter } from 'next/navigation'
 
 interface LeadsTableProps {
@@ -17,7 +17,6 @@ export default function LeadsTable({ leads, canEdit }: LeadsTableProps) {
   const [editData, setEditData] = useState<Partial<Lead>>({})
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleEdit = (lead: Lead) => {
     setEditingId(lead.id)
@@ -36,17 +35,16 @@ export default function LeadsTable({ leads, canEdit }: LeadsTableProps) {
   const handleSave = async (id: string) => {
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('leads')
-        .update({
-          status: editData.status,
-          notes: editData.notes,
-          follow_up_at: editData.follow_up_at || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
+      const result = await updateLeadAction({
+        id,
+        status: editData.status as Lead['status'],
+        notes: editData.notes,
+        follow_up_at: editData.follow_up_at || null,
+      })
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update lead')
+      }
 
       setEditingId(null)
       setEditData({})

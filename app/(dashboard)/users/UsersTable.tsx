@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Admin, AdminRole, ADMIN_ALLOWED_ROLES } from '@/lib/types'
-import { createClient } from '@/lib/supabase/browser'
+import { updateAdminRoleAction, deleteAdminAction } from '@/lib/actions/admins'
 import { useRouter } from 'next/navigation'
 
 interface UsersTableProps {
@@ -18,7 +18,6 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
   const [editRole, setEditRole] = useState<AdminRole>('viewer')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleEditRole = (admin: Admin) => {
     setEditingId(admin.id)
@@ -28,12 +27,10 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
   const handleSaveRole = async (id: string) => {
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('admins')
-        .update({ role: editRole, updated_at: new Date().toISOString() })
-        .eq('id', id)
-
-      if (error) throw error
+      const result = await updateAdminRoleAction({ id, role: editRole })
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update role')
+      }
 
       setEditingId(null)
       router.refresh()
@@ -52,12 +49,10 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
 
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('admins')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
+      const result = await deleteAdminAction({ id })
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove admin')
+      }
 
       router.refresh()
     } catch (error) {

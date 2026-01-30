@@ -1,12 +1,28 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkAdmin } from '@/lib/auth/requireAdmin'
 import { revalidatePath } from 'next/cache'
 import { Page, ContentJsonV2, emptyContentJsonV2 } from '@/lib/types'
 
 // Validate slug format: lowercase, hyphens, no special characters
 function isValidSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)
+}
+
+async function ensureAdmin(): Promise<{ ok: boolean; error?: string }> {
+  const result = await checkAdmin()
+
+  if (!result.isAuthenticated) {
+    return { ok: false, error: 'Not authenticated' }
+  }
+
+  if (!result.ok || !result.admin) {
+    return { ok: false, error: 'Not authorized' }
+  }
+
+  return { ok: true }
 }
 
 // Get all pages
@@ -63,6 +79,11 @@ export async function createPage(
   title: string
 ): Promise<{ data: Page | null; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { data: null, error: auth.error || 'Not authorized' }
+    }
+
     // Validate inputs
     if (!slug || !title) {
       return { data: null, error: 'Slug and title are required' }
@@ -82,7 +103,7 @@ export async function createPage(
       return { data: null, error: 'Title must be at least 2 characters' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Check if slug already exists
     const { data: existing } = await supabase
@@ -126,6 +147,11 @@ export async function updatePage(
   contentJson: ContentJsonV2
 ): Promise<{ success: boolean; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { success: false, error: auth.error || 'Not authorized' }
+    }
+
     if (!pageId) {
       return { success: false, error: 'Page ID is required' }
     }
@@ -139,7 +165,7 @@ export async function updatePage(
       return { success: false, error: 'Invalid content format' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase
       .from('pages')
@@ -166,11 +192,16 @@ export async function updatePage(
 // Delete a page
 export async function deletePage(pageId: string): Promise<{ success: boolean; error: string | null }> {
   try {
+    const auth = await ensureAdmin()
+    if (!auth.ok) {
+      return { success: false, error: auth.error || 'Not authorized' }
+    }
+
     if (!pageId) {
       return { success: false, error: 'Page ID is required' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase
       .from('pages')

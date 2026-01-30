@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { AdminRole, ADMIN_ALLOWED_ROLES } from '@/lib/types'
-import { createClient } from '@/lib/supabase/browser'
+import { addAdminAction } from '@/lib/actions/admins'
 import { useRouter } from 'next/navigation'
 
 // All role options available in the system (matching Supabase enum app_role)
@@ -12,61 +12,36 @@ export default function AddAdminModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [userId, setUserId] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<AdminRole>('editor')
+  const [role, setRole] = useState<AdminRole>('admin')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(userId)) {
-      setError('Invalid UUID format. Please enter a valid Supabase Auth user ID.')
+    const result = await addAdminAction({
+      userId,
+      email,
+      role,
+    })
+
+    if (!result.success) {
+      setError(result.error || 'Failed to add admin. Make sure the user exists in Supabase Auth.')
       setLoading(false)
       return
     }
 
-    try {
-      // Check if admin already exists
-      const { data: existing } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', userId)
-        .single()
-
-      if (existing) {
-        setError('This user is already an admin')
-        setLoading(false)
-        return
-      }
-
-      // Insert new admin
-      const { error: insertError } = await supabase.from('admins').insert({
-        user_id: userId,
-        email,
-        role,
-      })
-
-      if (insertError) throw insertError
-
-      // Reset and close
-      setUserId('')
-      setEmail('')
-      setRole('editor')
-      setIsOpen(false)
-      router.refresh()
-    } catch (err) {
-      console.error('Error adding admin:', err)
-      setError('Failed to add admin. Make sure the user exists in Supabase Auth.')
-    } finally {
-      setLoading(false)
-    }
+    // Reset and close
+    setUserId('')
+    setEmail('')
+    setRole('admin')
+    setIsOpen(false)
+    router.refresh()
+    setLoading(false)
   }
 
   const isAllowedRole = (r: AdminRole) => ADMIN_ALLOWED_ROLES.includes(r)
@@ -159,7 +134,7 @@ export default function AddAdminModal() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Only super_admin, admin, moderator, and editor roles have dashboard access
+                  Only super_admin and admin roles have dashboard access
                 </p>
               </div>
 

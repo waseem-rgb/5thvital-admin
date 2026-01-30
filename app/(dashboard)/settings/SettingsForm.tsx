@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Setting } from '@/lib/types'
-import { createClient } from '@/lib/supabase/browser'
+import { createSettingAction, deleteSettingAction, updateSettingAction } from '@/lib/actions/settings'
 import { useRouter } from 'next/navigation'
 
 interface SettingsFormProps {
@@ -21,7 +21,6 @@ export default function SettingsForm({ settings, canEdit }: SettingsFormProps) {
   const [error, setError] = useState<string | null>(null)
   
   const router = useRouter()
-  const supabase = createClient()
 
   const handleEdit = (setting: Setting) => {
     setEditingKey(setting.key)
@@ -33,69 +32,41 @@ export default function SettingsForm({ settings, canEdit }: SettingsFormProps) {
     setLoading(true)
     setError(null)
 
-    try {
-      let parsedValue
-      try {
-        parsedValue = JSON.parse(editValue)
-      } catch {
-        setError('Invalid JSON')
-        setLoading(false)
-        return
-      }
+    const result = await updateSettingAction({ key, valueJson: editValue })
 
-      const { error: updateError } = await supabase
-        .from('settings')
-        .update({
-          value: parsedValue,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('key', key)
-
-      if (updateError) throw updateError
-
-      setEditingKey(null)
-      router.refresh()
-    } catch (err) {
-      console.error('Error saving setting:', err)
-      setError('Failed to save setting')
-    } finally {
+    if (!result.success) {
+      setError(result.error || 'Failed to save setting')
       setLoading(false)
+      return
     }
+
+    setEditingKey(null)
+    router.refresh()
+    setLoading(false)
   }
 
   const handleAdd = async () => {
     setLoading(true)
     setError(null)
 
-    try {
-      let parsedValue
-      try {
-        parsedValue = JSON.parse(newValue)
-      } catch {
-        setError('Invalid JSON')
-        setLoading(false)
-        return
-      }
+    const result = await createSettingAction({
+      key: newKey,
+      valueJson: newValue,
+      description: newDescription || undefined,
+    })
 
-      const { error: insertError } = await supabase.from('settings').insert({
-        key: newKey,
-        value: parsedValue,
-        description: newDescription || null,
-      })
-
-      if (insertError) throw insertError
-
-      setNewKey('')
-      setNewValue('{}')
-      setNewDescription('')
-      setShowAddForm(false)
-      router.refresh()
-    } catch (err) {
-      console.error('Error adding setting:', err)
-      setError('Failed to add setting. Key may already exist.')
-    } finally {
+    if (!result.success) {
+      setError(result.error || 'Failed to add setting. Key may already exist.')
       setLoading(false)
+      return
     }
+
+    setNewKey('')
+    setNewValue('{}')
+    setNewDescription('')
+    setShowAddForm(false)
+    router.refresh()
+    setLoading(false)
   }
 
   const handleDelete = async (key: string) => {
@@ -104,21 +75,16 @@ export default function SettingsForm({ settings, canEdit }: SettingsFormProps) {
     }
 
     setLoading(true)
-    try {
-      const { error: deleteError } = await supabase
-        .from('settings')
-        .delete()
-        .eq('key', key)
-
-      if (deleteError) throw deleteError
-
-      router.refresh()
-    } catch (err) {
-      console.error('Error deleting setting:', err)
+    const result = await deleteSettingAction({ key })
+    if (!result.success) {
+      console.error('Error deleting setting:', result.error)
       alert('Failed to delete setting')
-    } finally {
       setLoading(false)
+      return
     }
+
+    router.refresh()
+    setLoading(false)
   }
 
   if (settings.length === 0 && !showAddForm) {

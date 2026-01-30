@@ -2,7 +2,7 @@
 export type AdminRole = 'super_admin' | 'admin' | 'moderator' | 'editor' | 'viewer' | 'user'
 
 // Allowed roles that grant admin dashboard access
-export const ADMIN_ALLOWED_ROLES: AdminRole[] = ['super_admin', 'admin', 'moderator', 'editor']
+export const ADMIN_ALLOWED_ROLES: AdminRole[] = ['super_admin', 'admin']
 
 // Admin from public.admins table
 export interface Admin {
@@ -215,7 +215,7 @@ export interface Setting {
 
 // Role-based permission checks
 export const canEdit = (role: AdminRole): boolean => {
-  return role === 'super_admin' || role === 'admin' || role === 'editor'
+  return role === 'super_admin' || role === 'admin'
 }
 
 export const canManageUsers = (role: AdminRole): boolean => {
