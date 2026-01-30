@@ -123,17 +123,58 @@ export interface Page {
   updated_by: string | null
 }
 
-// Package from public.packages table
+// Package status type
+export type PackageStatus = 'draft' | 'published' | 'archived'
+
+// Package from public.packages table (list view)
 export interface Package {
   id: string
   slug: string
   title: string
-  status: 'draft' | 'published' | 'archived'
+  status: PackageStatus
   is_featured: boolean
   sort_order: number
   created_at?: string
   updated_at?: string
 }
+
+// Parameter category for packages
+export interface PackageParameter {
+  category: string
+  count: number
+  items: string[]
+}
+
+// FAQ item for packages
+export interface PackageFaq {
+  question: string
+  answer: string
+}
+
+// Full package detail (for create/edit)
+export interface PackageDetail extends Package {
+  // Pricing
+  mrp?: number
+  price?: number
+  discount_percent?: number
+  // Snapshot
+  reports_within_hours?: number
+  tests_included?: number
+  requisites?: string
+  home_collection_minutes?: number
+  // Content
+  highlights?: string
+  description?: string
+  // JSON fields
+  parameters?: PackageParameter[]
+  faqs?: PackageFaq[]
+}
+
+// Type for creating a new package (id, created_at, updated_at are auto-generated)
+export type PackageCreateInput = Omit<PackageDetail, 'id' | 'created_at' | 'updated_at'>
+
+// Type for updating a package
+export type PackageUpdateInput = Partial<PackageCreateInput>
 
 // Lead from public.leads table
 export interface Lead {
