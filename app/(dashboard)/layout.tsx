@@ -7,13 +7,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { admin, isAuthenticated } = await checkAdmin()
+  const result = await checkAdmin()
 
-  if (!isAuthenticated) {
+  // Log final decision for debugging
+  console.log('[DashboardLayout] checkAdmin result:', {
+    ok: result.ok,
+    isAuthenticated: result.isAuthenticated,
+    reason: result.reason,
+    adminEmail: result.admin?.email,
+    adminRole: result.admin?.role,
+  })
+
+  if (!result.isAuthenticated) {
     redirect('/login')
   }
 
-  if (!admin) {
+  if (!result.ok || !result.admin) {
     return <NotAuthorized />
   }
 

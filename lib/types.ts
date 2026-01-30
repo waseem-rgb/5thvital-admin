@@ -1,5 +1,8 @@
-// Admin roles
-export type AdminRole = 'super_admin' | 'editor' | 'viewer'
+// Admin roles - matches Supabase enum app_role
+export type AdminRole = 'super_admin' | 'admin' | 'moderator' | 'editor' | 'viewer' | 'user'
+
+// Allowed roles that grant admin dashboard access
+export const ADMIN_ALLOWED_ROLES: AdminRole[] = ['super_admin', 'admin', 'moderator', 'editor']
 
 // Admin from public.admins table
 export interface Admin {
@@ -159,13 +162,13 @@ export interface Setting {
 
 // Role-based permission checks
 export const canEdit = (role: AdminRole): boolean => {
-  return role === 'super_admin' || role === 'editor'
+  return role === 'super_admin' || role === 'admin' || role === 'editor'
 }
 
 export const canManageUsers = (role: AdminRole): boolean => {
-  return role === 'super_admin'
+  return role === 'super_admin' || role === 'admin'
 }
 
 export const canEditSettings = (role: AdminRole): boolean => {
-  return role === 'super_admin'
+  return role === 'super_admin' || role === 'admin'
 }

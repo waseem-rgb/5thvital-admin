@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { AdminRole } from '@/lib/types'
+import { AdminRole, ADMIN_ALLOWED_ROLES } from '@/lib/types'
 import { createClient } from '@/lib/supabase/browser'
 import { useRouter } from 'next/navigation'
 
-const roleOptions: AdminRole[] = ['super_admin', 'editor', 'viewer']
+// All role options available in the system (matching Supabase enum app_role)
+const roleOptions: AdminRole[] = ['super_admin', 'admin', 'moderator', 'editor', 'viewer', 'user']
 
 export default function AddAdminModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [userId, setUserId] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<AdminRole>('viewer')
+  const [role, setRole] = useState<AdminRole>('editor')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -57,7 +58,7 @@ export default function AddAdminModal() {
       // Reset and close
       setUserId('')
       setEmail('')
-      setRole('viewer')
+      setRole('editor')
       setIsOpen(false)
       router.refresh()
     } catch (err) {
@@ -67,6 +68,8 @@ export default function AddAdminModal() {
       setLoading(false)
     }
   }
+
+  const isAllowedRole = (r: AdminRole) => ADMIN_ALLOWED_ROLES.includes(r)
 
   return (
     <>
@@ -151,10 +154,13 @@ export default function AddAdminModal() {
                 >
                   {roleOptions.map((r) => (
                     <option key={r} value={r}>
-                      {r.replace('_', ' ')}
+                      {r.replace('_', ' ')} {isAllowedRole(r) ? '(has dashboard access)' : '(no dashboard access)'}
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Only super_admin, admin, moderator, and editor roles have dashboard access
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">

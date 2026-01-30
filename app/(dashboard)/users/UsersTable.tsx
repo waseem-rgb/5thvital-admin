@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Admin, AdminRole } from '@/lib/types'
+import { Admin, AdminRole, ADMIN_ALLOWED_ROLES } from '@/lib/types'
 import { createClient } from '@/lib/supabase/browser'
 import { useRouter } from 'next/navigation'
 
@@ -10,7 +10,8 @@ interface UsersTableProps {
   currentAdminId: string
 }
 
-const roleOptions: AdminRole[] = ['super_admin', 'editor', 'viewer']
+// All role options available in the system (matching Supabase enum app_role)
+const roleOptions: AdminRole[] = ['super_admin', 'admin', 'moderator', 'editor', 'viewer', 'user']
 
 export default function UsersTable({ admins, currentAdminId }: UsersTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -79,12 +80,22 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
     switch (role) {
       case 'super_admin':
         return 'bg-purple-100 text-purple-800'
+      case 'admin':
+        return 'bg-indigo-100 text-indigo-800'
+      case 'moderator':
+        return 'bg-green-100 text-green-800'
       case 'editor':
         return 'bg-blue-100 text-blue-800'
       case 'viewer':
         return 'bg-gray-100 text-gray-800'
+      case 'user':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
+
+  const isAllowedRole = (role: AdminRole) => ADMIN_ALLOWED_ROLES.includes(role)
 
   if (admins.length === 0) {
     return (
@@ -102,6 +113,7 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
           <tr>
             <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
             <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+            <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Access</th>
             <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Added</th>
             <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
           </tr>
@@ -111,7 +123,7 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
             <tr key={admin.id} className="hover:bg-gray-50">
               <td className="py-3">
                 <span className="font-medium text-gray-900">{admin.email}</span>
-                {admin.id === currentAdminId && (
+                {admin.user_id === currentAdminId && (
                   <span className="ml-2 text-xs text-primary-600">(you)</span>
                 )}
               </td>
@@ -121,7 +133,7 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
                     value={editRole}
                     onChange={(e) => setEditRole(e.target.value as AdminRole)}
                     className="input py-1 px-2 text-sm w-32"
-                    disabled={admin.id === currentAdminId}
+                    disabled={admin.user_id === currentAdminId}
                   >
                     {roleOptions.map((role) => (
                       <option key={role} value={role}>
@@ -135,9 +147,16 @@ export default function UsersTable({ admins, currentAdminId }: UsersTableProps) 
                   </span>
                 )}
               </td>
+              <td>
+                {isAllowedRole(admin.role) ? (
+                  <span className="text-xs text-green-600 font-medium">✓ Has Access</span>
+                ) : (
+                  <span className="text-xs text-red-600 font-medium">✗ No Access</span>
+                )}
+              </td>
               <td className="text-gray-600 text-sm">{formatDate(admin.created_at)}</td>
               <td>
-                {admin.id === currentAdminId ? (
+                {admin.user_id === currentAdminId ? (
                   <span className="text-sm text-gray-400">Cannot modify yourself</span>
                 ) : editingId === admin.id ? (
                   <div className="flex items-center gap-2">
