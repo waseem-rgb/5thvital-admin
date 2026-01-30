@@ -123,6 +123,18 @@ export interface Page {
   updated_by: string | null
 }
 
+// Package from public.packages table
+export interface Package {
+  id: string
+  slug: string
+  title: string
+  status: 'draft' | 'published' | 'archived'
+  is_featured: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
 // Lead from public.leads table
 export interface Lead {
   id: string
