@@ -41,7 +41,7 @@ export default async function LeadsPage() {
           </div>
         </div>
 
-        {/* Leads Table */}
+        {/* Leads Table with Search & Filter */}
         <div className="card overflow-hidden">
           <LeadsTable leads={leads} canEdit={isEditable} />
         </div>

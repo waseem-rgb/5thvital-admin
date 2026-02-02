@@ -3,13 +3,14 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PackageDetail, PackageStatus } from '@/lib/types'
+import { PackageDetail, PackageStatus, PackageParameter, PackageFaq } from '@/lib/types'
 import {
   createPackageAction,
   updatePackageAction,
   deletePackage
 } from '@/lib/actions/packages'
 import { generateSlug } from '@/lib/utils'
+import ParametersEditor from './components/ParametersEditor'
 
 interface PackageFormProps {
   package?: PackageDetail
@@ -44,25 +45,13 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
   const [highlights, setHighlights] = useState(pkg?.highlights || '')
   const [description, setDescription] = useState(pkg?.description || '')
   
-  // JSON fields
-  const [parametersJson, setParametersJson] = useState(
-    pkg?.parameters ? JSON.stringify(pkg.parameters, null, 2) : '[]'
-  )
-  const [faqsJson, setFaqsJson] = useState(
-    pkg?.faqs ? JSON.stringify(pkg.faqs, null, 2) : '[]'
-  )
+  // Parameters - now using structured editor
+  const [parameters, setParameters] = useState<PackageParameter[]>(pkg?.parameters || [])
   
-  // JSON validation errors
-  const [parametersError, setParametersError] = useState<string | null>(null)
-  const [faqsError, setFaqsError] = useState<string | null>(null)
-
-  // Auto-generate slug from title
-  const handleTitleChange = (newTitle: string) => {
-    setTitle(newTitle)
-    if (mode === 'create' && !slug) {
-      // Only auto-generate if slug is empty (user hasn't manually set it)
-    }
-  }
+  // FAQs - still using JSON but with better UX
+  const [faqs, setFaqs] = useState<PackageFaq[]>(pkg?.faqs || [])
+  const [newFaqQuestion, setNewFaqQuestion] = useState('')
+  const [newFaqAnswer, setNewFaqAnswer] = useState('')
 
   const handleGenerateSlug = () => {
     if (title) {
@@ -70,52 +59,38 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
     }
   }
 
-  // Validate JSON in real-time
-  const validateParametersJson = (json: string) => {
-    setParametersJson(json)
-    if (!json.trim() || json.trim() === '[]') {
-      setParametersError(null)
-      return
-    }
-    try {
-      const parsed = JSON.parse(json)
-      if (!Array.isArray(parsed)) {
-        setParametersError('Must be a valid JSON array')
-      } else {
-        setParametersError(null)
-      }
-    } catch {
-      setParametersError('Invalid JSON syntax')
-    }
+  // Calculate tests_included from parameters
+  const calculateTestsIncluded = () => {
+    const total = parameters.reduce((sum, param) => sum + param.count, 0)
+    setTestsIncluded(total.toString())
   }
 
-  const validateFaqsJson = (json: string) => {
-    setFaqsJson(json)
-    if (!json.trim() || json.trim() === '[]') {
-      setFaqsError(null)
-      return
-    }
-    try {
-      const parsed = JSON.parse(json)
-      if (!Array.isArray(parsed)) {
-        setFaqsError('Must be a valid JSON array')
-      } else {
-        setFaqsError(null)
-      }
-    } catch {
-      setFaqsError('Invalid JSON syntax')
-    }
+  // FAQ management
+  const addFaq = () => {
+    if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) return
+    
+    setFaqs([...faqs, { question: newFaqQuestion.trim(), answer: newFaqAnswer.trim() }])
+    setNewFaqQuestion('')
+    setNewFaqAnswer('')
+  }
+
+  const removeFaq = (index: number) => {
+    setFaqs(faqs.filter((_, i) => i !== index))
+  }
+
+  const moveFaq = (index: number, direction: 'up' | 'down') => {
+    const newFaqs = [...faqs]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    
+    if (targetIndex < 0 || targetIndex >= newFaqs.length) return
+    
+    [newFaqs[index], newFaqs[targetIndex]] = [newFaqs[targetIndex], newFaqs[index]]
+    setFaqs(newFaqs)
   }
 
   const handleSubmit = async (publishOnSave: boolean = false) => {
     setError(null)
     setSuccessMessage(null)
-
-    // Check for JSON errors
-    if (parametersError || faqsError) {
-      setError('Please fix JSON validation errors before saving')
-      return
-    }
 
     const formData = new FormData()
     formData.set('title', title)
@@ -133,8 +108,8 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
     if (homeCollectionMinutes) formData.set('home_collection_minutes', homeCollectionMinutes)
     if (highlights) formData.set('highlights', highlights)
     if (description) formData.set('description', description)
-    formData.set('parameters', parametersJson || '[]')
-    formData.set('faqs', faqsJson || '[]')
+    formData.set('parameters', JSON.stringify(parameters))
+    formData.set('faqs', JSON.stringify(faqs))
 
     startTransition(async () => {
       let result
@@ -150,14 +125,12 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
       }
 
       if (mode === 'create') {
-        // Redirect to edit page after creation
         router.push(`/packages/${result.data!.id}`)
       } else {
         setSuccessMessage('Package saved successfully!')
         if (publishOnSave) {
           setStatus('published')
         }
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(null), 3000)
       }
     })
@@ -183,6 +156,8 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
     })
   }
 
+  const previewUrl = pkg?.slug ? `https://5thvital.com/packages/${pkg.slug}` : null
+
   return (
     <div className="space-y-6">
       {/* Error/Success Messages */}
@@ -197,6 +172,29 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
         </div>
       )}
 
+      {/* Preview Link (edit mode only) */}
+      {mode === 'edit' && previewUrl && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800">Preview on 5thVital.com</p>
+              <p className="text-xs text-blue-600 mt-1">{previewUrl}</p>
+            </div>
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Open Preview
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Basic Info Section */}
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
@@ -208,7 +206,7 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
             <input
               type="text"
               value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="e.g., Complete Blood Count"
               required
@@ -340,13 +338,26 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tests Included
             </label>
-            <input
-              type="number"
-              value={testsIncluded}
-              onChange={(e) => setTestsIncluded(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder="e.g., 80"
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={testsIncluded}
+                onChange={(e) => setTestsIncluded(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="e.g., 80"
+              />
+              <button
+                type="button"
+                onClick={calculateTestsIncluded}
+                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                title="Calculate from parameters"
+              >
+                Auto-calc
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Click Auto-calc to count tests from parameters
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -406,44 +417,111 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
         </div>
       </div>
 
-      {/* Parameters Section (JSON) */}
+      {/* Parameters Section - NEW VISUAL EDITOR */}
       <div className="card p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Parameters</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          JSON array of parameter categories. Format: {`[{"category": "string", "count": number, "items": ["item1", "item2"]}]`}
-        </p>
-        <textarea
-          value={parametersJson}
-          onChange={(e) => validateParametersJson(e.target.value)}
-          rows={8}
-          className={`w-full px-3 py-2 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-            parametersError ? 'border-red-500 bg-red-50' : 'border-gray-300'
-          }`}
-          placeholder='[{"category": "Lipid Profile", "count": 5, "items": ["Total Cholesterol", "HDL", "LDL", "Triglycerides", "VLDL"]}]'
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Test Parameters</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Organize tests into categories. Search from the medical tests catalog or add manually.
+            </p>
+          </div>
+        </div>
+        <ParametersEditor 
+          parameters={parameters} 
+          onChange={setParameters} 
         />
-        {parametersError && (
-          <p className="mt-1 text-sm text-red-600">{parametersError}</p>
-        )}
       </div>
 
-      {/* FAQs Section (JSON) */}
+      {/* FAQs Section - Improved UX */}
       <div className="card p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">FAQs</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          JSON array of FAQ items. Format: {`[{"question": "string", "answer": "string"}]`}
-        </p>
-        <textarea
-          value={faqsJson}
-          onChange={(e) => validateFaqsJson(e.target.value)}
-          rows={8}
-          className={`w-full px-3 py-2 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-            faqsError ? 'border-red-500 bg-red-50' : 'border-gray-300'
-          }`}
-          placeholder='[{"question": "What is included?", "answer": "This package includes..."}]'
-        />
-        {faqsError && (
-          <p className="mt-1 text-sm text-red-600">{faqsError}</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">FAQs</h3>
+        
+        {/* Existing FAQs */}
+        {faqs.length > 0 && (
+          <div className="space-y-3 mb-4">
+            {faqs.map((faq, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 text-sm">{faq.question}</p>
+                    <p className="text-gray-600 text-sm mt-1">{faq.answer}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveFaq(index, 'up')}
+                      disabled={index === 0}
+                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveFaq(index, 'down')}
+                      disabled={index === faqs.length - 1}
+                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeFaq(index)}
+                      className="p-1 text-red-400 hover:text-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
+
+        {/* Add New FAQ */}
+        <div className="border border-dashed border-gray-300 rounded-lg p-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">Add New FAQ</p>
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={newFaqQuestion}
+              onChange={(e) => setNewFaqQuestion(e.target.value)}
+              placeholder="Question"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+            <textarea
+              value={newFaqAnswer}
+              onChange={(e) => setNewFaqAnswer(e.target.value)}
+              placeholder="Answer"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+            <button
+              type="button"
+              onClick={addFaq}
+              disabled={!newFaqQuestion.trim() || !newFaqAnswer.trim()}
+              className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add FAQ
+            </button>
+          </div>
+        </div>
+
+        {/* JSON Preview */}
+        <details className="mt-4">
+          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+            View JSON data
+          </summary>
+          <pre className="mt-2 p-3 bg-gray-100 rounded-lg text-xs overflow-x-auto">
+            {JSON.stringify(faqs, null, 2)}
+          </pre>
+        </details>
       </div>
 
       {/* Actions */}
@@ -471,7 +549,7 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
           <button
             type="button"
             onClick={() => handleSubmit(false)}
-            disabled={isPending || !!parametersError || !!faqsError}
+            disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             {isPending ? 'Saving...' : 'Save'}
@@ -480,7 +558,7 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
             <button
               type="button"
               onClick={() => handleSubmit(true)}
-              disabled={isPending || !!parametersError || !!faqsError}
+              disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
               {isPending ? 'Publishing...' : 'Save & Publish'}
@@ -490,7 +568,7 @@ export default function PackageForm({ package: pkg, mode }: PackageFormProps) {
             <button
               type="button"
               onClick={() => handleSubmit(false)}
-              disabled={isPending || !!parametersError || !!faqsError}
+              disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
               {isPending ? 'Updating...' : 'Update'}
