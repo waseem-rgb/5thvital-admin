@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25';
+const API_BASE = typeof window !== 'undefined'
+  ? '' // In browser: use Next.js rewrites (same-origin)
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25');
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';
