@@ -11,6 +11,8 @@ interface Phlebotomist {
   areas: string[] | null;
   isActive: boolean;
   todayCount: number;
+  activeSlots: number;
+  next7Bookings: number;
 }
 
 export default function PhlebotomistsPage() {
@@ -193,6 +195,7 @@ export default function PhlebotomistsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Areas</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Today</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Slot Summary</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
@@ -222,6 +225,13 @@ export default function PhlebotomistsPage() {
                     <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
                       {p.todayCount}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs text-gray-600">
+                      <span className="font-medium">{p.activeSlots}</span> active slots
+                      <span className="mx-1 text-gray-300">|</span>
+                      <span className="font-medium">{p.next7Bookings}</span> bookings (7d)
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
