@@ -44,6 +44,14 @@ const nextConfig = {
           destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25'}/api/coupons`,
         },
         {
+          source: '/api/prescriptions/:path*',
+          destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25'}/api/prescriptions/:path*`,
+        },
+        {
+          source: '/api/prescriptions',
+          destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25'}/api/prescriptions`,
+        },
+        {
           source: '/api/settings',
           destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://64.227.129.25'}/api/settings`,
         },
