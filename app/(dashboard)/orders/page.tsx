@@ -18,10 +18,11 @@ interface Booking {
   customerAge?: number;
   customerGender?: string;
   address?: string;
-  bookingDate?: string;
-  bookingTime?: string;
+  preferredDate?: string;
+  preferredTime?: string;
   status: string;
   totalAmount: number | string;
+  finalAmount?: number | string;
   discountAmount?: number | string;
   couponCode?: string;
   notes?: string;
@@ -29,13 +30,14 @@ interface Booking {
   createdAt: string;
 }
 
-const STATUSES = ['pending', 'confirmed', 'collected', 'completed', 'cancelled'] as const;
+const STATUSES = ['pending', 'confirmed', 'sample_collected', 'processing', 'completed', 'cancelled'] as const;
 
 const statusColor = (s: string) => {
   switch (s) {
     case 'completed': return 'bg-green-100 text-green-700';
     case 'confirmed': return 'bg-blue-100 text-blue-700';
-    case 'collected': return 'bg-purple-100 text-purple-700';
+    case 'sample_collected': return 'bg-purple-100 text-purple-700';
+    case 'processing': return 'bg-orange-100 text-orange-700';
     case 'cancelled': return 'bg-red-100 text-red-700';
     case 'pending': return 'bg-yellow-100 text-yellow-700';
     default: return 'bg-gray-100 text-gray-700';
@@ -149,7 +151,7 @@ export default function OrdersPage() {
                         className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer ${statusColor(b.status)} ${updatingStatus === b.id ? 'opacity-50' : ''}`}
                       >
                         {STATUSES.map(s => (
-                          <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                          <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
                         ))}
                       </select>
                     </td>
@@ -210,16 +212,16 @@ export default function OrdersPage() {
                       <p className="font-medium text-gray-900">{selected.address}</p>
                     </div>
                   )}
-                  {selected.bookingDate && (
+                  {selected.preferredDate && (
                     <div>
                       <span className="text-gray-500">Preferred Date</span>
-                      <p className="font-medium text-gray-900">{selected.bookingDate}</p>
+                      <p className="font-medium text-gray-900">{selected.preferredDate}</p>
                     </div>
                   )}
-                  {selected.bookingTime && (
+                  {selected.preferredTime && (
                     <div>
                       <span className="text-gray-500">Preferred Time</span>
-                      <p className="font-medium text-gray-900">{selected.bookingTime}</p>
+                      <p className="font-medium text-gray-900">{selected.preferredTime}</p>
                     </div>
                   )}
                   <div>
@@ -236,7 +238,7 @@ export default function OrdersPage() {
                         className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer ${statusColor(selected.status)}`}
                       >
                         {STATUSES.map(s => (
-                          <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                          <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
                         ))}
                       </select>
                     </p>
