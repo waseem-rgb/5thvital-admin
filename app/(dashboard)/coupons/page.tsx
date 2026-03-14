@@ -19,7 +19,6 @@ export default function CouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Coupon | null>(null);
   const [form, setForm] = useState({
     code: '', discountType: 'percent', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: ''
   });
@@ -36,22 +35,7 @@ export default function CouponsPage() {
   useEffect(() => { loadCoupons(); }, []);
 
   function openCreate() {
-    setEditing(null);
     setForm({ code: '', discountType: 'percent', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', expiresAt: '' });
-    setShowForm(true);
-  }
-
-  function openEdit(c: Coupon) {
-    setEditing(c);
-    setForm({
-      code: c.code,
-      discountType: c.discountType,
-      discountValue: String(c.discountValue),
-      minOrderAmount: String(c.minOrderAmount || ''),
-      maxDiscount: String(c.maxDiscount || ''),
-      usageLimit: String(c.usageLimit || ''),
-      expiresAt: c.expiresAt ? c.expiresAt.split('T')[0] : '',
-    });
     setShowForm(true);
   }
 
@@ -67,15 +51,11 @@ export default function CouponsPage() {
         usageLimit: Number(form.usageLimit) || undefined,
         expiresAt: form.expiresAt || undefined,
       };
-      if (editing) {
-        await api.put(`/api/admin/coupons/${editing.id}`, body);
-      } else {
-        await api.post('/api/admin/coupons', body);
-      }
+      await api.post('/api/admin/coupons', body);
       setShowForm(false);
       loadCoupons();
     } catch {
-      alert('Failed to save coupon');
+      alert('Failed to create coupon');
     } finally {
       setSaving(false);
     }
@@ -103,7 +83,7 @@ export default function CouponsPage() {
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{editing ? 'Edit Coupon' : 'New Coupon'}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">New Coupon</h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
@@ -146,7 +126,7 @@ export default function CouponsPage() {
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={saving}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+                {saving ? 'Creating...' : 'Create Coupon'}
               </button>
               <button type="button" onClick={() => setShowForm(false)}
                 className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
@@ -180,15 +160,14 @@ export default function CouponsPage() {
                       {c.discountType === 'percent' ? `${c.discountValue}%` : `₹${c.discountValue}`}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{c.minOrderAmount ? `₹${c.minOrderAmount}` : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{c.usedCount}/{c.usageLimit || '∞'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{c.usedCount}/{c.usageLimit || '\u221E'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : 'Never'}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {c.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 flex gap-2">
-                      <button onClick={() => openEdit(c)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                    <td className="px-6 py-4">
                       <button onClick={() => handleDelete(c.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
                     </td>
                   </tr>
